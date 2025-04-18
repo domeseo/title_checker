@@ -9,10 +9,13 @@
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.5",
     "crypto-js": "^4.2.0",
+    "css-select": "^5.1.0",
+    "nth-check": "^2.1.1",
     "react": "^19.1.0",
     "react-bootstrap": "^2.10.9",
     "react-dom": "^19.1.0",
     "react-scripts": "5.0.1",
+    "svgo": "^3.3.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
@@ -26,6 +29,12 @@
       "react-app",
       "react-app/jest"
     ]
+  },
+  "resolutions": {
+    "nth-check": "2.1.1",
+    "postcss": "8.4.35",
+    "svgo": "2.8.0",
+    "css-select": "4.3.0"
   },
   "browserslist": {
     "production": [
