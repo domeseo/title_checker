@@ -7,7 +7,7 @@ redis==5.0.1
 pycryptodome==3.20.0
 python-dotenv==1.0.1
 requests==2.31.0
-gunicorn==22.0.0
+gunicorn==23.0.0
 # Dependencias adicionales para seguridad
 validators==0.22.0
 ipaddress==1.0.23 
