@@ -2,15 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
 import CryptoJS from "crypto-js";
 
-// Obtener la clave desde las variables de entorno, nunca hardcodeada
+// Get the key from environment variables, never hardcoded
 const secretPass = process.env.REACT_APP_ENCRYPTION_KEY || "";
 
-// Obtener la URL base de la API desde las variables de entorno
+// Get the API base URL from environment variables
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
 
 function encryptAPIKey(apiKey) {
-    // Usamos un método más simple: Base64 + una capa básica de ofuscación
-    const base64Key = btoa(apiKey); // Convertir a Base64
+    // We use a simpler method: Base64 + a basic layer of obfuscation
+    const base64Key = btoa(apiKey); // Convert to Base64
     return base64Key;
 }
 
@@ -41,7 +41,7 @@ const SerpChecker = ({ onUpdate }) => {
         setBrand(e.target.value);
     }
 
-    // Función para actualizar la previsualización
+    // Function to update the preview
     const updatePreview = () => {
         if (typeof onUpdate === 'function') {
             const data = {
@@ -54,12 +54,12 @@ const SerpChecker = ({ onUpdate }) => {
         }
     };
 
-    // Botón para actualizar la previsualización manualmente
+    // Button to manually update the preview
     const handlePreviewUpdate = () => {
         updatePreview();
     };
 
-    // Actualizar la previsualización inmediatamente al cargar la página
+    // Update the preview immediately when the page loads
     useEffect(() => {
         updatePreview();
     }, []);
@@ -67,7 +67,7 @@ const SerpChecker = ({ onUpdate }) => {
     const sendApiKey = async () => {
         try {
             if (!openai) {
-                setError("Por favor, ingresa tu API key de OpenAI");
+                setError("Please enter your OpenAI API key");
                 return;
             }
 
@@ -88,13 +88,13 @@ const SerpChecker = ({ onUpdate }) => {
             const data = await response.json();
 
             if (response.ok) {
-                alert("API key configurada con éxito");
+                alert("API key configured successfully");
             } else {
-                throw new Error(data.message || "Error al configurar la API key");
+                throw new Error(data.message || "Error configuring API key");
             }
         } catch (err) {
             console.error("Error:", err);
-            setError("Error al configurar la API key: " + err.message);
+            setError("Error configuring API key: " + err.message);
         }
     };
 
@@ -118,7 +118,7 @@ const SerpChecker = ({ onUpdate }) => {
         setError("");
         setAnalysis(null);
 
-        // Datos para enviar al servidor
+        // Data to send to the server
         const serpData = {
             title,
             description,
@@ -129,7 +129,7 @@ const SerpChecker = ({ onUpdate }) => {
         };
 
         try {
-            // Comunicación con el backend
+            // Communication with the backend
             const response = await fetch(`${API_URL}/analyze`, {
                 method: 'POST',
                 headers: {
@@ -140,25 +140,25 @@ const SerpChecker = ({ onUpdate }) => {
             });
 
             const data = await response.json();
-            console.log('Respuesta del servidor:', data);
+            console.log('Server response:', data);
 
             if (!response.ok) {
-                // Manejar el error de límite excedido (código 429)
+                // Handle the exceeded limit error (code 429)
                 if (response.status === 429) {
-                    throw new Error(data.message || 'Has alcanzado el límite diario de uso');
+                    throw new Error(data.message || 'You have reached the daily usage limit');
                 } else {
-                    throw new Error(data.message || 'Error desconocido');
+                    throw new Error(data.message || 'Unknown error');
                 }
             }
 
             if (data.status === 'success') {
                 setAnalysis(data.data.analysis);
             } else {
-                throw new Error(data.message || 'Error desconocido');
+                throw new Error(data.message || 'Unknown error');
             }
         } catch (err) {
             console.error("Error:", err);
-            setError("Ocurrió un error al procesar la solicitud: " + err.message);
+            setError("An error occurred while processing the request: " + err.message);
         } finally {
             setIsLoading(false);
         }
@@ -185,30 +185,30 @@ const SerpChecker = ({ onUpdate }) => {
             if (!response.ok) {
                 // Manejar el error de límite excedido (código 429)
                 if (response.status === 429) {
-                    throw new Error(data.message || 'Has alcanzado el límite diario de extracciones');
+                    throw new Error(data.message || 'You have reached the daily extraction limit');
                 } else {
                     throw new Error(data.message || "Error during the process");
                 }
             }
 
-            // Guardar los metadatos pero no mostrarlos visualmente
+            // Save the metadata but don't display them visually
             if (data.metadata) {
                 setMetadata(data.metadata);
 
-                // Usar el título que viene del servidor
+                // Use the title from the server
                 setTitle(data.title);
 
-                // Usar la meta descripción que viene del servidor
+                // Use the meta description from the server
                 setDescription(data.meta_description);
             }
 
             setIsMetaExtracted(true);
 
-            // Actualizar la previsualización después de obtener los metadatos
-            setTimeout(updatePreview, 100); // Pequeño retraso para asegurar que los estados se han actualizado
+            // Update the preview after getting the metadata
+            setTimeout(updatePreview, 100); // Small delay to ensure states have been updated
         } catch (err) {
-            console.error("Error al obtener data", err);
-            setError("No se pudo extraer la información: " + err.message);
+            console.error("Error getting data", err);
+            setError("Could not extract information: " + err.message);
             setIsMetaExtracted(false);
         } finally {
             setIsLoading(false);
@@ -227,7 +227,7 @@ const SerpChecker = ({ onUpdate }) => {
         <>
             {error && <Alert variant="danger">{error}</Alert>}
 
-            {/* Un solo formulario para todo */}
+            {/* A single form for everything */}
             <Form onSubmit={handleSubmit}>
 
                 <div className="container">
@@ -239,7 +239,7 @@ const SerpChecker = ({ onUpdate }) => {
                                     <Form.Control type="password" className="form-control" required value={openai} onChange={(e) => setOpenai(e.target.value)} />
                                 </Form.Group>
                             </Form>
-                            {/* Botón para enviar Openai Key */}
+                            {/* Button to send OpenAI Key */}
                             <Button
                                 variant="danger"
                                 type="button"
@@ -266,7 +266,7 @@ const SerpChecker = ({ onUpdate }) => {
 
                         </div>
                         <div className="col-sm urlmeta">
-                            {/* Campo para URL */}
+                            {/* URL field */}
                             <Form.Group className="mb-3">
                                 <Form.Label>URL</Form.Label>
                                 <Form.Control
@@ -276,7 +276,7 @@ const SerpChecker = ({ onUpdate }) => {
                                     onChange={(e) => setUrl(e.target.value)}
                                 />
                             </Form.Group>
-                            {/* Botón para obtener metadatos */}
+                            {/* Button to get metadata */}
                             <Button
                                 variant="primary"
                                 type="button"
@@ -357,21 +357,21 @@ const SerpChecker = ({ onUpdate }) => {
                     <Form.Text className="text-muted">{description.length}/155</Form.Text>
                 </Form.Group>
 
-                {/* Botón para actualizar la previsualización */}
+                {/* Button to update preview */}
                 <Button
                     variant="secondary"
                     type="button"
                     onClick={handlePreviewUpdate}
                     className="mb-4 me-2"
                 >
-                    Actualizar Previsualización
+                    Update Preview
                 </Button>
 
-                {/* Botón para enviar el formulario */}
+                {/* Button to submit the form */}
                 <Button
                     variant="primary"
                     type="submit"
-                    disabled={isLoading || !title || !description} // Deshabilitar solo si no hay título o descripción
+                    disabled={isLoading || !title || !description} // Disable only if there is no title or description
                     className="mb-4"
                 >
                     {isLoading ? (
@@ -392,7 +392,7 @@ const SerpChecker = ({ onUpdate }) => {
                 </Button>
             </Form>
 
-            {/* Mostrar los resultados del análisis */}
+            {/* Show analysis results */}
             {analysis && (
                 <div className="mt-4 p-3 border rounded bg-light">
                     <h3>Results</h3>
