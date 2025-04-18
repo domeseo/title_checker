@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
+import CryptoJS from "crypto-js";
 
+// Usar directamente la clave en lugar de obtenerla de variables de entorno
+const secretPass = "NO_KEY_HARDCODED";
+
+function encryptAPIKey(apiKey) {
+    // Usamos un método más simple: Base64 + una capa básica de ofuscación
+    const base64Key = btoa(apiKey); // Convertir a Base64
+    return base64Key;
+}
 
 const SerpChecker = ({ onUpdate }) => {
     const [title, setTitle] = useState("Your SEO Title Here - Up to 60 Characters");
@@ -12,6 +21,41 @@ const SerpChecker = ({ onUpdate }) => {
     const [isMetaExtracted, setIsMetaExtracted] = useState(false);
     const [metadata, setMetadata] = useState(null);
     const [userId, setUserId] = useState("");
+    const [openai, setOpenai] = useState("");
+
+    const sendApiKey = async () => {
+        try {
+            if (!openai) {
+                setError("Por favor, ingresa tu API key de OpenAI");
+                return;
+            }
+
+            // Usar la nueva función de encriptación
+            const encryptedKey = encryptAPIKey(openai);
+
+            const response = await fetch('http://localhost:5002/set-key', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    encryptedKey: encryptedKey
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert("API key configurada con éxito");
+            } else {
+                throw new Error(data.message || "Error al configurar la API key");
+            }
+        } catch (err) {
+            console.error("Error:", err);
+            setError("Error al configurar la API key: " + err.message);
+        }
+    };
 
     // Generar o recuperar ID de usuario si no existe
     useEffect(() => {
@@ -70,6 +114,7 @@ const SerpChecker = ({ onUpdate }) => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify(serpData)
             });
 
@@ -107,6 +152,7 @@ const SerpChecker = ({ onUpdate }) => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     url,
                     user_id: userId
@@ -164,6 +210,38 @@ const SerpChecker = ({ onUpdate }) => {
 
             {/* Un solo formulario para todo */}
             <Form onSubmit={handleSubmit}>
+                {/*OpenaiKey*/}
+
+                <Form >
+                    <Form.Group className="form-group mb-3">
+                        <Form.Label>OpenAI Key</Form.Label>
+                        <Form.Control type="password" className="form-control" value={openai} onChange={(e) => setOpenai(e.target.value)} />
+                    </Form.Group>
+                </Form>
+                {/* Botón para enviar Openai Key */}
+                <Button
+                    variant="primary"
+                    type="button"
+                    disabled={isLoading || !openai}
+                    onClick={sendApiKey}
+                    className="mb-4"
+                >
+                    {isLoading ? (
+                        <>
+                            <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                                className="me-2"
+                            />
+                            Working...
+                        </>
+                    ) : (
+                        "Set your Key"
+                    )}
+                </Button>
                 {/* Campo para URL */}
                 <Form.Group className="mb-3">
                     <Form.Label>URL</Form.Label>
@@ -174,7 +252,6 @@ const SerpChecker = ({ onUpdate }) => {
                         onChange={(e) => setUrl(e.target.value)}
                     />
                 </Form.Group>
-
                 {/* Botón para obtener metadatos */}
                 <Button
                     variant="primary"
@@ -199,6 +276,10 @@ const SerpChecker = ({ onUpdate }) => {
                         "Get Metadata"
                     )}
                 </Button>
+
+
+
+
 
                 {/* Título SEO */}
                 <Form.Group className="mb-3">
