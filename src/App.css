@@ -87,3 +87,25 @@
   line-height: 1.5;
   color: #333;
 }
+
+.openkeybox {
+  background: aliceblue;
+  margin: 2px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.form-label {
+  margin: 2px;
+  padding: 10px;
+}
+
+.urlmeta,
+.keyword,
+.brand {
+  background-color: aliceblue;
+  margin: 4px;
+  border-radius: 10px;
+  margin-bottom: 2px;
+  font-weight: bold;
+}

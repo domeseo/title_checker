@@ -12,8 +12,8 @@ function encryptAPIKey(apiKey) {
 }
 
 const SerpChecker = ({ onUpdate }) => {
-    const [title, setTitle] = useState("Your SEO Title Here - Up to 60 Characters");
-    const [description, setDescription] = useState("Your meta description here. This text will appear in search results and should be attractive and informative. Maximum 155 characters.");
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
     const [url, setUrl] = useState("https://example.com");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
@@ -23,10 +23,15 @@ const SerpChecker = ({ onUpdate }) => {
     const [userId, setUserId] = useState("");
     const [openai, setOpenai] = useState("");
     const [keyword, setKeyword] = useState("");
+    const [brand, setBrand] = useState("");
 
     const handleKeywordChange = (e) => {
         setKeyword(e.target.value);
     };
+
+    const handleBrandChange = (e) => {
+        setBrand(e.target.value);
+    }
 
     const sendApiKey = async () => {
         try {
@@ -110,6 +115,7 @@ const SerpChecker = ({ onUpdate }) => {
             description,
             url,
             keyword,
+            brand,
             user_id: userId
         };
 
@@ -211,78 +217,106 @@ const SerpChecker = ({ onUpdate }) => {
 
             {/* Un solo formulario para todo */}
             <Form onSubmit={handleSubmit}>
-                {/*OpenaiKey*/}
 
-                <Form >
-                    <Form.Group className="form-group mb-3">
-                        <Form.Label>OpenAI Key</Form.Label>
-                        <Form.Control type="password" className="form-control" value={openai} onChange={(e) => setOpenai(e.target.value)} />
-                    </Form.Group>
-                </Form>
-                {/* Botón para enviar Openai Key */}
-                <Button
-                    variant="primary"
-                    type="button"
-                    disabled={isLoading || !openai}
-                    onClick={sendApiKey}
-                    className="mb-4"
-                >
-                    {isLoading ? (
-                        <>
-                            <Spinner
-                                as="span"
-                                animation="border"
-                                size="sm"
-                                role="status"
-                                aria-hidden="true"
-                                className="me-2"
+                <div className="container">
+                    <div className="row">
+                        <div className="col-sm openkeybox">
+                            <Form >
+                                <Form.Group className="form-group mb-3">
+                                    <Form.Label>OpenAI Key</Form.Label>
+                                    <Form.Control type="password" className="form-control" required value={openai} onChange={(e) => setOpenai(e.target.value)} />
+                                </Form.Group>
+                            </Form>
+                            {/* Botón para enviar Openai Key */}
+                            <Button
+                                variant="danger"
+                                type="button"
+                                disabled={isLoading || !openai}
+                                onClick={sendApiKey}
+                                className="mb-4"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Spinner
+                                            as="span"
+                                            animation="border"
+                                            size="sm"
+                                            role="status"
+                                            aria-hidden="true"
+                                            className="me-2"
+                                        />
+                                        Working...
+                                    </>
+                                ) : (
+                                    "Set your Key"
+                                )}
+                            </Button>
+
+                        </div>
+                        <div className="col-sm urlmeta">
+                            {/* Campo para URL */}
+                            <Form.Group className="mb-3">
+                                <Form.Label>URL</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="https://example.com"
+                                    value={url}
+                                    onChange={(e) => setUrl(e.target.value)}
+                                />
+                            </Form.Group>
+                            {/* Botón para obtener metadatos */}
+                            <Button
+                                variant="primary"
+                                type="button"
+                                disabled={isLoading}
+                                onClick={() => getMetas(url)}
+                                className="mb-4"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Spinner
+                                            as="span"
+                                            animation="border"
+                                            size="sm"
+                                            role="status"
+                                            aria-hidden="true"
+                                            className="me-2"
+                                        />
+                                        Working...
+                                    </>
+                                ) : (
+                                    "Get Metadata"
+                                )}
+                            </Button>
+
+                        </div>
+                    </div>
+                </div>
+                <div className="container">
+                    <div className="row">
+                        <div className="col-sm keyword">{/* Keyword */}
+                            <Form.Group className="mb-4">
+                                <Form.Label>Focus Keyword</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Insert your focus keyword"
+                                    value={keyword}
+                                    onChange={handleKeywordChange}
+                                />
+                            </Form.Group></div>
+                        <div className="col-sm brand"><Form.Group className="mb-4">
+                            <Form.Label>Brand</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder="Insert your Brand"
+                                value={brand}
+                                onChange={handleBrandChange}
                             />
-                            Working...
-                        </>
-                    ) : (
-                        "Set your Key"
-                    )}
-                </Button>
-                {/* Campo para URL */}
-                <Form.Group className="mb-3">
-                    <Form.Label>URL</Form.Label>
-                    <Form.Control
-                        type="text"
-                        placeholder="https://example.com"
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                    />
-                </Form.Group>
-                {/* Botón para obtener metadatos */}
-                <Button
-                    variant="primary"
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => getMetas(url)}
-                    className="mb-4"
-                >
-                    {isLoading ? (
-                        <>
-                            <Spinner
-                                as="span"
-                                animation="border"
-                                size="sm"
-                                role="status"
-                                aria-hidden="true"
-                                className="me-2"
-                            />
-                            Working...
-                        </>
-                    ) : (
-                        "Get Metadata"
-                    )}
-                </Button>
+                        </Form.Group></div>
+                    </div>
+                </div>
 
-
-
-
-
-                {/* Título SEO */}
+                {/* SEO Title */}
                 <Form.Group className="mb-3">
                     <Form.Label>Title (max. 60 chars.)</Form.Label>
                     <Form.Control
@@ -291,11 +325,12 @@ const SerpChecker = ({ onUpdate }) => {
                         value={title}
                         maxLength={60}
                         onChange={handleTitleChange}
+                        required
                     />
                     <Form.Text className="text-muted">{title.length}/60 </Form.Text>
                 </Form.Group>
 
-                {/* Meta Descripción */}
+                {/* Meta Description */}
                 <Form.Group className="mb-3">
                     <Form.Label>Meta Description (max. 155 chars.)</Form.Label>
                     <Form.Control
@@ -305,20 +340,14 @@ const SerpChecker = ({ onUpdate }) => {
                         value={description}
                         maxLength={155}
                         onChange={handleDescriptionChange}
+                        required
                     />
                     <Form.Text className="text-muted">{description.length}/155</Form.Text>
                 </Form.Group>
 
-                {/* Keyword */}
-                <Form.Group className="mb-3">
-                    <Form.Label>Focus Keyword</Form.Label>
-                    <Form.Control
-                        type="text"
-                        placeholder="Insert your focus keyword"
-                        value={keyword}
-                        onChange={handleKeywordChange}
-                    />
-                </Form.Group>
+
+
+
 
                 {/* Botón para enviar el formulario */}
                 <Button
