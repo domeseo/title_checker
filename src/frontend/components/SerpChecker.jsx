@@ -77,7 +77,7 @@ const SerpChecker = ({ onUpdate }) => {
     const sendApiKey = async () => {
         try {
             if (!openai) {
-                setError("Please enter your OpenAI API key");
+                setError("Please, introduce your OpenAI API key");
                 return;
             }
 
@@ -98,13 +98,13 @@ const SerpChecker = ({ onUpdate }) => {
             const data = await response.json();
 
             if (response.ok) {
-                alert("API key configured successfully");
+                alert("API key configured correctly");
             } else {
-                throw new Error(data.message || "Error configuring API key");
+                throw new Error(data.message || "Error configuring the API key");
             }
         } catch (err) {
             console.error("Error:", err);
-            setError("Error configuring API key: " + err.message);
+            setError("Error configuring the API key: " + err.message);
         }
     };
 
@@ -218,7 +218,7 @@ const SerpChecker = ({ onUpdate }) => {
             setTimeout(updatePreview, 100); // Small delay to ensure states have been updated
         } catch (err) {
             console.error("Error getting data", err);
-            setError("Could not extract information: " + err.message);
+            setError("Could not extract the information: " + err.message);
             setIsMetaExtracted(false);
         } finally {
             setIsLoading(false);
