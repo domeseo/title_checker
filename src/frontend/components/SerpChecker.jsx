@@ -9,9 +9,19 @@ const secretPass = process.env.REACT_APP_ENCRYPTION_KEY || "";
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
 
 function encryptAPIKey(apiKey) {
-    // We use a simpler method: Base64 + a basic layer of obfuscation
-    const base64Key = btoa(apiKey); // Convert to Base64
-    return base64Key;
+    // Implement a more secure encryption using AES
+    if (!secretPass) {
+        console.error("Encryption key is missing");
+        return null;
+    }
+
+    try {
+        // Use AES encryption instead of simple Base64
+        return CryptoJS.AES.encrypt(apiKey, secretPass).toString();
+    } catch (error) {
+        console.error("Encryption failed:", error);
+        return null;
+    }
 }
 
 const SerpChecker = ({ onUpdate }) => {

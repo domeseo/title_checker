@@ -11,35 +11,72 @@ from Crypto.Cipher import AES
 import base64
 import hashlib
 import uuid
+from Crypto.Util.Padding import unpad
+from urllib.parse import urlparse
+import socket
+import ipaddress
+import html
 
 app = Flask(__name__)
 # Configuración de secreto para las sesiones
-app.secret_key = os.getenv("SECRET_KEY", "NO_KEY_HARDCODED")
+app.secret_key = os.getenv("SECRET_KEY")
 # Configurar la permanencia de las sesiones
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 horas
 
-# Configuración explícita de CORS para permitir cualquier origen y cookies
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+# Configuración de CORS más segura
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+CORS(app, resources={r"/*": {"origins": allowed_origins}},
+     supports_credentials=True)
 
-# Ruta correcta para .env
-load_dotenv(dotenv_path='/Users/domenicopuzone/serp_title/src/.env')
+# Cargar variables de entorno usando una ruta relativa
+load_dotenv()
 
 
 def decrypt_api_key(encrypted_key, passphrase=None):
     try:
-        # Si viene del frontend, simplemente decodificar de Base64
-        if not encrypted_key.startswith('b\'') and not encrypted_key.startswith('b"'):
-            return base64.b64decode(encrypted_key).decode('utf-8')
-        # Si viene del .env (versión antigua), usar el método anterior
-        else:
+        if not passphrase:
+            passphrase = os.getenv("ENCRYPTION_KEY")
+            if not passphrase:
+                raise ValueError("Encryption key is missing")
+
+        # Implementación de descifrado AES para la nueva versión
+        # Importación necesaria para Crypto
+        from Crypto.Cipher import AES
+        from Crypto.Util.Padding import unpad
+        from base64 import b64decode
+
+        # Descifrar usando el mismo algoritmo que en el frontend
+        try:
+            # Decodificar de base64
+            encrypted_bytes = b64decode(encrypted_key)
+            # Extraer vector de inicialización (primeros 16 bytes)
+            iv = encrypted_bytes[:16]
+            # Extraer datos cifrados
+            ciphertext = encrypted_bytes[16:]
+            # Crear clave a partir de contraseña
             key = hashlib.sha256(passphrase.encode()).digest()
-            encrypted_data = base64.b64decode(encrypted_key)
-            iv = encrypted_data[:16]
-            cipher = AES.new(key, AES.MODE_CFB, iv)
-            decrypted = cipher.decrypt(encrypted_data[16:])
-            return decrypted.decode()
+            # Crear objeto AES
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+            # Descifrar y eliminar el padding
+            decrypted = unpad(cipher.decrypt(ciphertext), AES.block_size)
+            return decrypted.decode('utf-8')
+        except Exception as e:
+            print(f"Error en nuevo método de descifrado: {e}")
+            # Intentar con el método antiguo si el nuevo falla
+            if encrypted_key.startswith('b\'') or encrypted_key.startswith('b"'):
+                key = hashlib.sha256(passphrase.encode()).digest()
+                encrypted_data = base64.b64decode(encrypted_key)
+                iv = encrypted_data[:16]
+                cipher = AES.new(key, AES.MODE_CFB, iv)
+                decrypted = cipher.decrypt(encrypted_data[16:])
+                return decrypted.decode('utf-8')
+            else:
+                # Método de respaldo (simple Base64)
+                return base64.b64decode(encrypted_key).decode('utf-8')
+
     except Exception as e:
         print(f"Error al desencriptar: {e}")
         return None
@@ -124,13 +161,40 @@ def extract_meta():
     user_id = data.get("user_id", "anonymous")
 
     if not url:
-        return jsonify({"message": "inserisci l'url della pagina"}), 400
+        return jsonify({"message": "Please provide a URL"}), 400
+
+    # Validación de URL para evitar SSRF y otros ataques
+    try:
+        # Comprobar si la URL es válida
+        parsed_url = urlparse(url)
+
+        # Verificar que tiene esquema y dominio
+        if not parsed_url.scheme or not parsed_url.netloc:
+            return jsonify({"error": "Invalid URL format"}), 400
+
+        # Verificar que el esquema es http o https
+        if parsed_url.scheme not in ['http', 'https']:
+            return jsonify({"error": "URL must use HTTP or HTTPS protocol"}), 400
+
+        # Opcional: bloquear IPs privadas/localhost para prevenir SSRF
+        try:
+            domain = parsed_url.netloc.split(':')[0]
+            ip = socket.gethostbyname(domain)
+            ip_obj = ipaddress.ip_address(ip)
+
+            if ip_obj.is_private or ip_obj.is_loopback:
+                return jsonify({"error": "Private or loopback IPs are not allowed"}), 403
+        except:
+            # Si no se puede resolver el dominio, continuar (podría ser un nombre de dominio válido pero no resoluble)
+            pass
+    except Exception as e:
+        return jsonify({"error": f"URL validation error: {str(e)}"}), 400
 
     # Verificar si el usuario puede usar la herramienta
     if not can_use_tool(user_id):
         return jsonify({
-            "error": "Límite de uso excedido",
-            "message": "Has alcanzado el límite diario de extracciones (3). Inténtalo mañana."
+            "error": "Usage limit exceeded",
+            "message": "You have reached the daily extraction limit (3). Please try again tomorrow."
         }), 429  # 429 = Too Many Requests
 
     # Verificar que tenemos una API key
@@ -321,19 +385,36 @@ def analyze_AI():
     try:
         # Obtener datos del request
         data = request.json
-        title = data.get(
-            "title", "Cosa vedere a Malaga: 10 cose da non perdersi")
-        meta_description = data.get(
-            "description", "Tutto quello che devi assolutamente vedere a Malaga e 10 cose che non devi perdere")
+        title = data.get("title", "")
+        meta_description = data.get("description", "")
         user_id = data.get("user_id", "anonymous")
         keyword = data.get("keyword", "")
         brand = data.get("brand", "")
 
+        # Validar entradas
+        if not title or len(title) > 150:
+            return jsonify({
+                "error": "Invalid title",
+                "message": "Title is required and must be less than 150 characters"
+            }), 400
+
+        if len(meta_description) > 500:
+            return jsonify({
+                "error": "Invalid description",
+                "message": "Description must be less than 500 characters"
+            }), 400
+
+        # Sanitizar entradas para evitar inyección
+        title = html.escape(title)
+        meta_description = html.escape(meta_description)
+        keyword = html.escape(keyword)
+        brand = html.escape(brand)
+
         # Verificar si el usuario puede usar la herramienta
         if not can_use_tool(user_id):
             return jsonify({
-                "error": "Límite de uso excedido",
-                "message": "Has alcanzado el límite diario de análisis (3). Inténtalo mañana."
+                "error": "Usage limit exceeded",
+                "message": "You have reached the daily analysis limit (3). Please try again tomorrow."
             }), 429
 
         # Usar la clave de la sesión si está disponible, o la clave del entorno como respaldo
@@ -406,7 +487,6 @@ CTR Increase: [estimated % increase]
         })
     except Exception as e:
         # Loguear el error
-        import traceback
         print("ERROR:", str(e))
         print(traceback.format_exc())
 
