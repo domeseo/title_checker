@@ -314,6 +314,7 @@ def analyze_AI():
             "description", "Tutto quello che devi assolutamente vedere a Malaga e 10 cose che non devi perdere")
         user_id = data.get("user_id", "anonymous")
         keyword = data.get("keyword", "")
+        brand = data.get("brand", "")
 
         # Verificar si el usuario puede usar la herramienta
         if not can_use_tool(user_id):
@@ -335,27 +336,29 @@ def analyze_AI():
         prompt = f"""
        As a SEO Expert, evaluate the current Title "{title}" and Meta Description "{meta_description}" for SEO effectiveness and CTR potential in the SERP.
 
-The focus keyword is: "{keyword}"
+The focus keyword is: "{keyword} and brand is: {brand}"
 
 Your task:
 
-Estimate the CTR of the current Title and Meta Description.
+1. Estimate the CTR of the current Title and Meta Description.
+2. Propose a new SEO-optimized Title and Meta Description, using the focus keyword to increase both ranking and CTR.
+3. STRICTLY RESPECT character limits:
+   - Title: maximum 60 characters including spaces and {brand} at the end.
+   - Meta Description: maximum 155 characters including spaces.
+   - You MUST count the characters (including spaces) and ensure the Title is max 60 and the Meta Description max 155. Never exceed. If needed, rewrite or shorten.
+4. Capitalize every word in the Title, except for articles, prepositions, and conjunctions (e.g., “di”, “e”, “a”, “con”, “su”).
+5. The Meta Description must include the focus keyword **if possible** in a natural way and should help to increase the CTR by being clear, appealing, and action-oriented.
+6. Provide an estimation of how much the new Title and Description could increase the CTR.
 
-Propose a new SEO-optimized Title and Meta Description, explicitly using the focus keyword to increase both ranking and click-through rate (CTR).
+Format your answer exactly as follows and REPLY IN THE SAME LANGUAGE as the user:
 
-The new Title must be a maximum of 60 characters. Do not exceed this limit.
+SEO Title: [new title, max 60 characters]  
+Meta Description: [new description, max 155 characters]  
+CTR Estimation (Original): [estimated CTR in %]  
+CTR Estimation (Optimized): [estimated CTR in %]  
+CTR Increase: [estimated % increase]
 
-The new Meta Description must be a maximum of 155 characters. Do not exceed this limit.
 
-Capitalize every word in the Title, except for conjunctions, prepositions, and articles (e.g., “di”, “e”, “a”, “con”, “su”).
-
-Provide an estimation of how much the new Title and Description could increase the CTR.
-
-Format your answer exactly as follows and REPLY IN THE SAME LANGUAGE as the user:SEO Title: [new title, max 60 characters]
-Meta Description: [new description, max 155 characters]
-CTR Estimation (Original): [estimated CTR in % for the original title/description]
-CTR Estimation (Optimized): [estimated CTR in % for the optimized title/description]
-CTR Increase: [estimated percentage increase in CTR]
 
 """
 
