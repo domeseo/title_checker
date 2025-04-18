@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
 import requests
@@ -101,6 +101,19 @@ def can_use_tool(user_id):
 
     # Temporalmente, siempre permitimos el uso de la herramienta
     return True
+
+
+@app.route('/')
+def index():
+    return jsonify({
+        "status": "online",
+        "message": "SERP Title Checker API is running",
+        "endpoints": {
+            "analyze": "/analyze - POST: Analyze title and meta description",
+            "extract-meta": "/extract-meta - POST: Extract metadata from URL",
+            "health": "/api/health - GET: Check API health"
+        }
+    })
 
 
 @app.route('/extract-meta', methods=['POST'])
@@ -346,7 +359,7 @@ Your task:
    - Title: maximum 60 characters including spaces and {brand} at the end.
    - Meta Description: maximum 155 characters including spaces.
    - You MUST count the characters (including spaces) and ensure the Title is max 60 and the Meta Description max 155. Never exceed. If needed, rewrite or shorten.
-4. Capitalize every word in the Title, except for articles, prepositions, and conjunctions (e.g., “di”, “e”, “a”, “con”, “su”).
+4. Capitalize every word in the Title, except for articles, prepositions, and conjunctions (e.g., "di", "e", "a", "con", "su").
 5. The Meta Description must include the focus keyword **if possible** in a natural way and should help to increase the CTR by being clear, appealing, and action-oriented.
 6. Provide an estimation of how much the new Title and Description could increase the CTR.
 
@@ -407,6 +420,12 @@ CTR Increase: [estimated % increase]
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok'})
+
+
+@app.route('/favicon.ico')
+def favicon():
+    # Respuesta No Content para evitar errores de favicon
+    return jsonify({"status": "no favicon"}), 204
 
 
 if __name__ == '__main__':
