@@ -22,6 +22,11 @@ const SerpChecker = ({ onUpdate }) => {
     const [metadata, setMetadata] = useState(null);
     const [userId, setUserId] = useState("");
     const [openai, setOpenai] = useState("");
+    const [keyword, setKeyword] = useState("");
+
+    const handleKeywordChange = (e) => {
+        setKeyword(e.target.value);
+    };
 
     const sendApiKey = async () => {
         try {
@@ -104,6 +109,7 @@ const SerpChecker = ({ onUpdate }) => {
             title,
             description,
             url,
+            keyword,
             user_id: userId
         };
 
@@ -189,11 +195,6 @@ const SerpChecker = ({ onUpdate }) => {
         } finally {
             setIsLoading(false);
         }
-    }
-
-    const handleUrlSubmit = (e) => {
-        setUrl(e.target.value);
-        getMetas(e.target.value);
     }
 
     const handleTitleChange = (e) => {
@@ -306,6 +307,17 @@ const SerpChecker = ({ onUpdate }) => {
                         onChange={handleDescriptionChange}
                     />
                     <Form.Text className="text-muted">{description.length}/155</Form.Text>
+                </Form.Group>
+
+                {/* Keyword */}
+                <Form.Group className="mb-3">
+                    <Form.Label>Focus Keyword</Form.Label>
+                    <Form.Control
+                        type="text"
+                        placeholder="Insert your focus keyword"
+                        value={keyword}
+                        onChange={handleKeywordChange}
+                    />
                 </Form.Group>
 
                 {/* Botón para enviar el formulario */}
