@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
 import CryptoJS from "crypto-js";
 
-// Usar directamente la clave en lugar de obtenerla de variables de entorno
-const secretPass = "NO_KEY_HARDCODED";
+// Obtener la clave desde las variables de entorno, nunca hardcodeada
+const secretPass = process.env.REACT_APP_ENCRYPTION_KEY || "";
 
 // Obtener la URL base de la API desde las variables de entorno
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
@@ -27,6 +27,11 @@ const SerpChecker = ({ onUpdate }) => {
     const [openai, setOpenai] = useState("");
     const [keyword, setKeyword] = useState("");
     const [brand, setBrand] = useState("");
+    const [previewData, setPreviewData] = useState({
+        title: "",
+        description: "",
+        url: "https://example.com"
+    });
 
     const handleKeywordChange = (e) => {
         setKeyword(e.target.value);
@@ -35,6 +40,29 @@ const SerpChecker = ({ onUpdate }) => {
     const handleBrandChange = (e) => {
         setBrand(e.target.value);
     }
+
+    // Función para actualizar la previsualización
+    const updatePreview = () => {
+        if (typeof onUpdate === 'function') {
+            const data = {
+                title,
+                description,
+                url
+            };
+            setPreviewData(data);
+            onUpdate(data);
+        }
+    };
+
+    // Botón para actualizar la previsualización manualmente
+    const handlePreviewUpdate = () => {
+        updatePreview();
+    };
+
+    // Actualizar la previsualización inmediatamente al cargar la página
+    useEffect(() => {
+        updatePreview();
+    }, []);
 
     const sendApiKey = async () => {
         try {
@@ -83,28 +111,6 @@ const SerpChecker = ({ onUpdate }) => {
 
         setUserId(storedUserId);
     }, []);
-
-    // Actualizar la preview en tiempo real cuando cambie title o description
-    useEffect(() => {
-        if (typeof onUpdate === 'function' && (title || description)) {
-            onUpdate({
-                title,
-                description,
-                url
-            });
-        }
-    }, [title, description, url, onUpdate]);
-
-    // Actualizar la preview inmediatamente al cargar la página
-    useEffect(() => {
-        if (typeof onUpdate === 'function') {
-            onUpdate({
-                title,
-                description,
-                url
-            });
-        }
-    }, [onUpdate]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -197,6 +203,9 @@ const SerpChecker = ({ onUpdate }) => {
             }
 
             setIsMetaExtracted(true);
+
+            // Actualizar la previsualización después de obtener los metadatos
+            setTimeout(updatePreview, 100); // Pequeño retraso para asegurar que los estados se han actualizado
         } catch (err) {
             console.error("Error al obtener data", err);
             setError("No se pudo extraer la información: " + err.message);
@@ -348,9 +357,15 @@ const SerpChecker = ({ onUpdate }) => {
                     <Form.Text className="text-muted">{description.length}/155</Form.Text>
                 </Form.Group>
 
-
-
-
+                {/* Botón para actualizar la previsualización */}
+                <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={handlePreviewUpdate}
+                    className="mb-4 me-2"
+                >
+                    Actualizar Previsualización
+                </Button>
 
                 {/* Botón para enviar el formulario */}
                 <Button
