@@ -32,7 +32,58 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Estilos para la vista previa SERP */
+.serp-preview {
+  margin: 20px auto;
+  max-width: 600px;
+  text-align: left;
+  padding: 15px;
+  border-radius: 5px;
+  background-color: #fff;
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+}
+
+.serp-title {
+  color: #1a0dab;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 3px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.serp-url {
+  color: #006621;
+  font-size: 14px;
+  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.serp-description {
+  color: #4d5156;
+  font-size: 14px;
+  line-height: 1.57;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Estilos para el análisis SEO */
+.analysis-result {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
 }
