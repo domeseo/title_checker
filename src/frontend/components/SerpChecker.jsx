@@ -5,6 +5,9 @@ import CryptoJS from "crypto-js";
 // Usar directamente la clave en lugar de obtenerla de variables de entorno
 const secretPass = "NO_KEY_HARDCODED";
 
+// Obtener la URL base de la API desde las variables de entorno
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
+
 function encryptAPIKey(apiKey) {
     // Usamos un método más simple: Base64 + una capa básica de ofuscación
     const base64Key = btoa(apiKey); // Convertir a Base64
@@ -43,7 +46,7 @@ const SerpChecker = ({ onUpdate }) => {
             // Usar la nueva función de encriptación
             const encryptedKey = encryptAPIKey(openai);
 
-            const response = await fetch('http://localhost:5002/set-key', {
+            const response = await fetch(`${API_URL}/set-key`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -121,7 +124,7 @@ const SerpChecker = ({ onUpdate }) => {
 
         try {
             // Comunicación con el backend
-            const response = await fetch('http://localhost:5002/analyze', {
+            const response = await fetch(`${API_URL}/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -159,7 +162,7 @@ const SerpChecker = ({ onUpdate }) => {
         try {
             setIsLoading(true);
 
-            const response = await fetch('http://localhost:5002/extract-meta', {
+            const response = await fetch(`${API_URL}/extract-meta`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: serp-title-checker
+    name: serp-title-checker-backend
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app
@@ -10,4 +10,19 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ENCRYPTION_KEY
-        generateValue: true 
+        generateValue: true
+  
+  - type: web
+    name: serp-title-checker-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://title-checker.onrender.com
+      - key: REACT_APP_ENCRYPTION_KEY
+        sync: false 
