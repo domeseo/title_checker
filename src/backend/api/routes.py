@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 import socket
 import ipaddress
 import html
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 app = Flask(__name__)
 # Configuración de secreto para las sesiones
@@ -33,6 +35,31 @@ CORS(app, resources={r"/*": {"origins": allowed_origins}},
 
 # Cargar variables de entorno usando una ruta relativa
 load_dotenv()
+
+# Protección contra ataques de fuerza bruta
+login_attempts = defaultdict(int)
+blocked_ips = {}
+MAX_ATTEMPTS = 5
+BLOCK_TIME_MINUTES = 15
+
+# Añadir encabezados de seguridad a todas las respuestas
+
+
+@app.after_request
+def add_security_headers(response):
+    # Prevenir que el navegador MIME-sniff la respuesta
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    # Habilitar protección XSS en navegadores antiguos
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    # Prevenir clickjacking
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    # Configurar política de seguridad de contenido
+    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    # No almacenar en caché datos sensibles
+    response.headers['Cache-Control'] = 'no-store'
+    # No exponer información de la plataforma
+    response.headers['Server'] = ''
+    return response
 
 
 def decrypt_api_key(encrypted_key, passphrase=None):
@@ -102,15 +129,27 @@ def get_current_api_key():
 @app.route("/set-key", methods=["POST"])
 def set_key():
     try:
+        # Obtener la IP del cliente
+        client_ip = request.remote_addr
+
+        # Comprobar si la IP está bloqueada
+        allowed, message = check_brute_force(client_ip)
+        if not allowed:
+            return {"error": "Brute force protection", "message": message}, 429
+
         data = request.get_json()
         encrypted_key = data.get("encryptedKey")
         if not encrypted_key:
-            return {"error": "No se proporcionó la API key encriptada"}, 400
+            # Incrementar intentos fallidos
+            increment_attempts(client_ip)
+            return {"error": "No encrypted API key provided"}, 400
 
         # Usar la nueva función de desencriptación
         api_key = decrypt_api_key(encrypted_key)
         if not api_key:
-            return {"error": "No se pudo desencriptar la API key"}, 400
+            # Incrementar intentos fallidos
+            increment_attempts(client_ip)
+            return {"error": "Could not decrypt API key"}, 400
 
         # Guardar en la sesión
         session["openai_key"] = api_key
@@ -118,9 +157,15 @@ def set_key():
         if "session_id" not in session:
             session["session_id"] = str(uuid.uuid4())
 
-        return {"message": "Key decifrata e salvata"}, 200
+        # Intento exitoso, restablecer contador
+        increment_attempts(client_ip, success=True)
+
+        return {"message": "Key decrypted and saved successfully"}, 200
     except Exception as e:
-        print(f"Error en set-key: {e}")
+        print(f"Error in set-key: {e}")
+        # Incrementar intentos fallidos en caso de error
+        client_ip = request.remote_addr
+        increment_attempts(client_ip)
         return {"error": str(e)}, 500
 
 
@@ -201,8 +246,8 @@ def extract_meta():
     current_api_key = get_current_api_key()
     if not current_api_key:
         return jsonify({
-            "error": "API key no disponible",
-            "message": "Por favor, proporciona tu API key de OpenAI"
+            "error": "API key not available",
+            "message": "Please provide your OpenAI API key"
         }), 400
 
     try:
@@ -229,6 +274,9 @@ def extract_meta():
             title = soup.find('title')
             title_text = title.get_text() if title else 'Title not found'
 
+            # Sanitizar salida
+            title_text = html.escape(title_text)
+
             # Extracción de metadatos
             metadata = {}
 
@@ -244,8 +292,11 @@ def extract_meta():
                 meta_description = soup.find(
                     'meta', attrs={'itemprop': 'description'})
 
-            metadata['description'] = meta_description.get(
+            desc_content = meta_description.get(
                 'content') if meta_description else 'Meta description not found'
+            # Sanitizar contenido
+            desc_content = html.escape(desc_content)
+            metadata['description'] = desc_content
 
             # Detección de plataforma CMS
             is_wordpress = False
@@ -337,7 +388,7 @@ def extract_meta():
             metadata['h1'] = h1.get_text().strip() if h1 else 'H1 not found'
 
             # Información adicional para diagnóstico
-            metadata['response_time'] = f"{response_time:.2f} segundos"
+            metadata['response_time'] = f"{response_time:.2f} seconds"
             metadata['status_code'] = response.status_code
             metadata['content_type'] = response.headers.get(
                 'Content-Type', 'Unknown')
@@ -352,31 +403,31 @@ def extract_meta():
         else:
             return jsonify({
                 "error": f"Failed with status code: {response.status_code}",
-                "message": f"La solicitud falló con código de estado {response.status_code}"
+                "message": f"Request failed with status code {response.status_code}"
             }), 500
     except requests.exceptions.Timeout:
         return jsonify({
             "error": "Timeout",
-            "message": "La solicitud excedió el tiempo de espera (10 segundos)"
+            "message": "Request exceeded timeout (10 seconds)"
         }), 504
     except requests.exceptions.ConnectionError:
         return jsonify({
             "error": "Connection Error",
-            "message": "No se pudo conectar al servidor. Verifica la URL y tu conexión a internet."
+            "message": "Could not connect to server. Please check the URL and your internet connection."
         }), 502
     except requests.exceptions.TooManyRedirects:
         return jsonify({
             "error": "Too Many Redirects",
-            "message": "La solicitud encontró demasiadas redirecciones. Verifica la URL."
+            "message": "The request encountered too many redirects. Please check the URL."
         }), 500
     except Exception as e:
         # Registrar el error completo
-        print(f"Error al extraer metadatos de {url}: {str(e)}")
+        print(f"Error extracting metadata from {url}: {str(e)}")
         print(traceback.format_exc())
 
         return jsonify({
             "error": str(e),
-            "message": "Ocurrió un error al procesar la solicitud"
+            "message": "An error occurred while processing the request"
         }), 500
 
 
@@ -422,8 +473,8 @@ def analyze_AI():
 
         if not current_api_key:
             return jsonify({
-                "error": "API key no disponible",
-                "message": "Por favor, proporciona tu API key de OpenAI"
+                "error": "API key not available",
+                "message": "Please provide your OpenAI API key"
             }), 400
 
         # Crear el prompt para OpenAI
@@ -506,6 +557,38 @@ def health_check():
 def favicon():
     # Respuesta No Content para evitar errores de favicon
     return jsonify({"status": "no favicon"}), 204
+
+
+def check_brute_force(ip):
+    """Verificar si una IP debe ser bloqueada por muchos intentos fallidos"""
+    if ip in blocked_ips:
+        block_until = blocked_ips[ip]
+        if datetime.now() < block_until:
+            # IP aún bloqueada
+            remaining = (block_until - datetime.now()).total_seconds() / 60
+            return False, f"Too many failed attempts. Please try again in {int(remaining)} minutes."
+        else:
+            # Ha pasado el tiempo de bloqueo, eliminar el bloqueo
+            del blocked_ips[ip]
+            login_attempts[ip] = 0
+
+    return True, None
+
+
+def increment_attempts(ip, success=False):
+    """Incrementar conteo de intentos y bloquear IP si necesario"""
+    if success:
+        # Restablece el contador si es exitoso
+        login_attempts[ip] = 0
+        return
+
+    login_attempts[ip] += 1
+
+    if login_attempts[ip] >= MAX_ATTEMPTS:
+        # Bloquear la IP por el tiempo configurado
+        blocked_ips[ip] = datetime.now(
+        ) + timedelta(minutes=BLOCK_TIME_MINUTES)
+        login_attempts[ip] = 0
 
 
 if __name__ == '__main__':

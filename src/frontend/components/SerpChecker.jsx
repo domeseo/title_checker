@@ -193,7 +193,7 @@ const SerpChecker = ({ onUpdate }) => {
             const data = await response.json();
 
             if (!response.ok) {
-                // Manejar el error de límite excedido (código 429)
+                // Handle the exceeded limit error (code 429)
                 if (response.status === 429) {
                     throw new Error(data.message || 'You have reached the daily extraction limit');
                 } else {

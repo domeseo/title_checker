@@ -239,3 +239,23 @@ var/
 # Archivos temporales
 tmp/
 temp/
+
+# Archivos de seguridad
+*.key
+*.pem
+*.cert
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+
+# Archivos de log
+*.log
+logs/
+
+# Archivos de análisis de seguridad
+security-reports/
+*.sarif
