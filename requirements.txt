@@ -6,7 +6,7 @@ beautifulsoup4==4.12.2
 redis==5.0.1
 pycryptodome==3.20.0
 python-dotenv==1.0.1
-requests==2.31.0
+requests==2.32.2
 gunicorn==22.0.0
 # Dependencias adicionales para seguridad
 validators==0.22.0
