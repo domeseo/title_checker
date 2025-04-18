@@ -262,7 +262,8 @@ def extract_meta():
         # Iniciar temporizador
         start_time = time.time()
 
-        response = requests.get(url, headers=headers, timeout=10)
+        # Asegurar la verificación de certificados
+        response = requests.get(url, headers=headers, timeout=10, verify=True)
 
         # Calcular tiempo de respuesta
         response_time = time.time() - start_time
