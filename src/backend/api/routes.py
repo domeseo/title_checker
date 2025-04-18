@@ -1,20 +1,90 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from openai import OpenAI
 import requests
 from bs4 import BeautifulSoup
 import traceback
-import redis
 import time
 import os
 from dotenv import load_dotenv
+from Crypto.Cipher import AES
+import base64
+import hashlib
+import uuid
 
 app = Flask(__name__)
-# Configuración explícita de CORS para permitir cualquier origen
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Configuración de secreto para las sesiones
+app.secret_key = os.getenv("SECRET_KEY", "ForzaNapoli1926")
+# Configurar la permanencia de las sesiones
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 horas
+
+# Configuración explícita de CORS para permitir cualquier origen y cookies
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+# Ruta correcta para .env
+load_dotenv(dotenv_path='/Users/domenicopuzone/serp_title/src/.env')
 
 
-load_dotenv()  # para cargar las variables de entorno desde .env
+def decrypt_api_key(encrypted_key, passphrase=None):
+    try:
+        # Si viene del frontend, simplemente decodificar de Base64
+        if not encrypted_key.startswith('b\'') and not encrypted_key.startswith('b"'):
+            return base64.b64decode(encrypted_key).decode('utf-8')
+        # Si viene del .env (versión antigua), usar el método anterior
+        else:
+            key = hashlib.sha256(passphrase.encode()).digest()
+            encrypted_data = base64.b64decode(encrypted_key)
+            iv = encrypted_data[:16]
+            cipher = AES.new(key, AES.MODE_CFB, iv)
+            decrypted = cipher.decrypt(encrypted_data[16:])
+            return decrypted.decode()
+    except Exception as e:
+        print(f"Error al desencriptar: {e}")
+        return None
+
+
+# api key encrypting
+encryption_key = os.getenv("ENCRYPTION_KEY")
+encrypted_key = os.getenv("ENCRYPTED_API_KEY")
+
+# Intentamos inicializar con la clave encriptada si está disponible
+default_api_key = None
+if encrypted_key:
+    try:
+        default_api_key = decrypt_api_key(encrypted_key, encryption_key)
+    except Exception as e:
+        print(f"Error al desencriptar la API key: {e}")
+
+
+def get_current_api_key():
+    return session.get("openai_key") or default_api_key
+
+
+@app.route("/set-key", methods=["POST"])
+def set_key():
+    try:
+        data = request.get_json()
+        encrypted_key = data.get("encryptedKey")
+        if not encrypted_key:
+            return {"error": "No se proporcionó la API key encriptada"}, 400
+
+        # Usar la nueva función de desencriptación
+        api_key = decrypt_api_key(encrypted_key)
+        if not api_key:
+            return {"error": "No se pudo desencriptar la API key"}, 400
+
+        # Guardar en la sesión
+        session["openai_key"] = api_key
+        # Opcional: Generar un ID de sesión único si no existe
+        if "session_id" not in session:
+            session["session_id"] = str(uuid.uuid4())
+
+        return {"message": "Key decifrata e salvata"}, 200
+    except Exception as e:
+        print(f"Error en set-key: {e}")
+        return {"error": str(e)}, 500
 
 
 def can_use_tool(user_id):
@@ -49,6 +119,14 @@ def extract_meta():
             "error": "Límite de uso excedido",
             "message": "Has alcanzado el límite diario de extracciones (3). Inténtalo mañana."
         }), 429  # 429 = Too Many Requests
+
+    # Verificar que tenemos una API key
+    current_api_key = get_current_api_key()
+    if not current_api_key:
+        return jsonify({
+            "error": "API key no disponible",
+            "message": "Por favor, proporciona tu API key de OpenAI"
+        }), 400
 
     try:
         # Agregar timeout para evitar esperas prolongadas
@@ -234,7 +312,6 @@ def analyze_AI():
             "title", "Cosa vedere a Malaga: 10 cose da non perdersi")
         meta_description = data.get(
             "description", "Tutto quello che devi assolutamente vedere a Malaga e 10 cose che non devi perdere")
-        # Si no se proporciona ID, usar "anonymous"
         user_id = data.get("user_id", "anonymous")
 
         # Verificar si el usuario puede usar la herramienta
@@ -242,7 +319,16 @@ def analyze_AI():
             return jsonify({
                 "error": "Límite de uso excedido",
                 "message": "Has alcanzado el límite diario de análisis (3). Inténtalo mañana."
-            }), 429  # 429 = Too Many Requests
+            }), 429
+
+        # Usar la clave de la sesión si está disponible, o la clave del entorno como respaldo
+        current_api_key = get_current_api_key()
+
+        if not current_api_key:
+            return jsonify({
+                "error": "API key no disponible",
+                "message": "Por favor, proporciona tu API key de OpenAI"
+            }), 400
 
         # Crear el prompt para OpenAI
         prompt = f"""
@@ -266,8 +352,7 @@ CTR Increase: [estimated percentage increase in CTR]
 
 YOU MUST REPLY in the language of the user."""
 
-        client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI(api_key=current_api_key)
 
         response = client.responses.create(
             model="gpt-4.1",
