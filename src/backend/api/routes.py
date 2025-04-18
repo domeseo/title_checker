@@ -1,20 +1,90 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from openai import OpenAI
 import requests
 from bs4 import BeautifulSoup
 import traceback
-import redis
 import time
 import os
 from dotenv import load_dotenv
+from Crypto.Cipher import AES
+import base64
+import hashlib
+import uuid
 
 app = Flask(__name__)
-# Configuración explícita de CORS para permitir cualquier origen
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Configuración de secreto para las sesiones
+app.secret_key = os.getenv("SECRET_KEY", "NO_KEY_HARDCODED")
+# Configurar la permanencia de las sesiones
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 horas
+
+# Configuración explícita de CORS para permitir cualquier origen y cookies
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+# Ruta correcta para .env
+load_dotenv(dotenv_path='/Users/domenicopuzone/serp_title/src/.env')
 
 
-load_dotenv()  # para cargar las variables de entorno desde .env
+def decrypt_api_key(encrypted_key, passphrase=None):
+    try:
+        # Si viene del frontend, simplemente decodificar de Base64
+        if not encrypted_key.startswith('b\'') and not encrypted_key.startswith('b"'):
+            return base64.b64decode(encrypted_key).decode('utf-8')
+        # Si viene del .env (versión antigua), usar el método anterior
+        else:
+            key = hashlib.sha256(passphrase.encode()).digest()
+            encrypted_data = base64.b64decode(encrypted_key)
+            iv = encrypted_data[:16]
+            cipher = AES.new(key, AES.MODE_CFB, iv)
+            decrypted = cipher.decrypt(encrypted_data[16:])
+            return decrypted.decode()
+    except Exception as e:
+        print(f"Error al desencriptar: {e}")
+        return None
+
+
+# api key encrypting
+encryption_key = os.getenv("ENCRYPTION_KEY")
+encrypted_key = os.getenv("ENCRYPTED_API_KEY")
+
+# Intentamos inicializar con la clave encriptada si está disponible
+default_api_key = None
+if encrypted_key:
+    try:
+        default_api_key = decrypt_api_key(encrypted_key, encryption_key)
+    except Exception as e:
+        print(f"Error al desencriptar la API key: {e}")
+
+
+def get_current_api_key():
+    return session.get("openai_key") or default_api_key
+
+
+@app.route("/set-key", methods=["POST"])
+def set_key():
+    try:
+        data = request.get_json()
+        encrypted_key = data.get("encryptedKey")
+        if not encrypted_key:
+            return {"error": "No se proporcionó la API key encriptada"}, 400
+
+        # Usar la nueva función de desencriptación
+        api_key = decrypt_api_key(encrypted_key)
+        if not api_key:
+            return {"error": "No se pudo desencriptar la API key"}, 400
+
+        # Guardar en la sesión
+        session["openai_key"] = api_key
+        # Opcional: Generar un ID de sesión único si no existe
+        if "session_id" not in session:
+            session["session_id"] = str(uuid.uuid4())
+
+        return {"message": "Key decifrata e salvata"}, 200
+    except Exception as e:
+        print(f"Error en set-key: {e}")
+        return {"error": str(e)}, 500
 
 
 def can_use_tool(user_id):
@@ -49,6 +119,14 @@ def extract_meta():
             "error": "Límite de uso excedido",
             "message": "Has alcanzado el límite diario de extracciones (3). Inténtalo mañana."
         }), 429  # 429 = Too Many Requests
+
+    # Verificar que tenemos una API key
+    current_api_key = get_current_api_key()
+    if not current_api_key:
+        return jsonify({
+            "error": "API key no disponible",
+            "message": "Por favor, proporciona tu API key de OpenAI"
+        }), 400
 
     try:
         # Agregar timeout para evitar esperas prolongadas
@@ -234,50 +312,72 @@ def analyze_AI():
             "title", "Cosa vedere a Malaga: 10 cose da non perdersi")
         meta_description = data.get(
             "description", "Tutto quello che devi assolutamente vedere a Malaga e 10 cose che non devi perdere")
-        # Si no se proporciona ID, usar "anonymous"
         user_id = data.get("user_id", "anonymous")
+        keyword = data.get("keyword", "")
+        brand = data.get("brand", "")
 
         # Verificar si el usuario puede usar la herramienta
         if not can_use_tool(user_id):
             return jsonify({
                 "error": "Límite de uso excedido",
                 "message": "Has alcanzado el límite diario de análisis (3). Inténtalo mañana."
-            }), 429  # 429 = Too Many Requests
+            }), 429
+
+        # Usar la clave de la sesión si está disponible, o la clave del entorno como respaldo
+        current_api_key = get_current_api_key()
+
+        if not current_api_key:
+            return jsonify({
+                "error": "API key no disponible",
+                "message": "Por favor, proporciona tu API key de OpenAI"
+            }), 400
 
         # Crear el prompt para OpenAI
         prompt = f"""
-       As a SEO Expert, please evaluate the current Title "{title}" and Meta Description "{meta_description}" for SEO effectiveness and CTR potential in the SERP. 
+       As a SEO Expert, evaluate the current Title "{title}" and Meta Description "{meta_description}" for SEO effectiveness and CTR potential in the SERP.
 
-- Create an estimation of the CTR for the current Title and Meta Description.
-- Suggest a new SEO-optimized Title and Meta Description that would be more likely to increase CTR.
-- In your analysis, please indicate how much the new Title and Meta Description could potentially increase CTR compared to the original.
+The focus keyword is: "{keyword} and brand is: {brand}"
 
-Important:
-- The Title should not exceed 60 characters. MUST RESPECT THIS.
-- The Meta Description should not exceed 155 characters. MUST RESPECT THIS.
+Your task:
 
-Please provide the response in this style:
+1. Estimate the CTR of the current Title and Meta Description.
+2. Propose a new SEO-optimized Title and Meta Description, using the focus keyword to increase both ranking and CTR.
+3. STRICTLY RESPECT character limits:
+   - Title: maximum 60 characters including spaces and {brand} at the end.
+   - Meta Description: maximum 155 characters including spaces.
+   - You MUST count the characters (including spaces) and ensure the Title is max 60 and the Meta Description max 155. Never exceed. If needed, rewrite or shorten.
+4. Capitalize every word in the Title, except for articles, prepositions, and conjunctions (e.g., “di”, “e”, “a”, “con”, “su”).
+5. The Meta Description must include the focus keyword **if possible** in a natural way and should help to increase the CTR by being clear, appealing, and action-oriented.
+6. Provide an estimation of how much the new Title and Description could increase the CTR.
 
-SEO Title: [new title]
-Meta Description: [new description]
-CTR Estimation (Original): [estimated CTR in % for the original title/description]
-CTR Estimation (Optimized): [estimated CTR in % for the optimized title/description]
-CTR Increase: [estimated percentage increase in CTR]
+Format your answer exactly as follows and REPLY IN THE SAME LANGUAGE as the user:
 
-YOU MUST REPLY in the language of the user."""
+SEO Title: [new title, max 60 characters]  
+Meta Description: [new description, max 155 characters]  
+CTR Estimation (Original): [estimated CTR in %]  
+CTR Estimation (Optimized): [estimated CTR in %]  
+CTR Increase: [estimated % increase]
 
-        client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"))
+
+
+"""
+
+        client = OpenAI(api_key=current_api_key)
 
         response = client.responses.create(
             model="gpt-4.1",
-            instructions="You are SEO Expert with more over 11 years of experience",
+            instructions="You are SEO Expert with more over 11 years of experience, please provide the best solution for the user to increase CTR in SERP.",
             input=prompt
         )
 
         result = response.output_text
-        token = response.max_output_tokens
-        print(token)
+        token_input = response.usage.input_tokens
+        token_input_cost = int(token_input) * (3 / 1000000)
+        token_output = response.usage.output_tokens
+        token_output_cost = int(token_output) * (12 / 1000000)
+        token_cost = token_input_cost + token_output_cost
+        print(f"{token_cost} $")
+        print(result)
 
         # Devolver respuesta
         return jsonify({
@@ -286,7 +386,8 @@ YOU MUST REPLY in the language of the user."""
                 'analysis': result,
                 'original': {
                     'title': title,
-                    'description': meta_description
+                    'description': meta_description,
+                    'token_cost': token_cost
                 }
             }
         })
