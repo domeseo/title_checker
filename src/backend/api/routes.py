@@ -313,6 +313,7 @@ def analyze_AI():
         meta_description = data.get(
             "description", "Tutto quello che devi assolutamente vedere a Malaga e 10 cose che non devi perdere")
         user_id = data.get("user_id", "anonymous")
+        keyword = data.get("keyword", "")
 
         # Verificar si el usuario puede usar la herramienta
         if not can_use_tool(user_id):
@@ -332,37 +333,48 @@ def analyze_AI():
 
         # Crear el prompt para OpenAI
         prompt = f"""
-       As a SEO Expert, please evaluate the current Title "{title}" and Meta Description "{meta_description}" for SEO effectiveness and CTR potential in the SERP. 
+       As a SEO Expert, evaluate the current Title "{title}" and Meta Description "{meta_description}" for SEO effectiveness and CTR potential in the SERP.
 
-- Create an estimation of the CTR for the current Title and Meta Description.
-- Suggest a new SEO-optimized Title and Meta Description that would be more likely to increase CTR.
-- In your analysis, please indicate how much the new Title and Meta Description could potentially increase CTR compared to the original.
+The focus keyword is: "{keyword}"
 
-Important:
-- The Title should not exceed 60 characters. MUST RESPECT THIS.
-- The Meta Description should not exceed 155 characters. MUST RESPECT THIS.
+Your task:
 
-Please provide the response in this style:
+Estimate the CTR of the current Title and Meta Description.
 
-SEO Title: [new title]
-Meta Description: [new description]
+Propose a new SEO-optimized Title and Meta Description, explicitly using the focus keyword to increase both ranking and click-through rate (CTR).
+
+The new Title must be a maximum of 60 characters. Do not exceed this limit.
+
+The new Meta Description must be a maximum of 155 characters. Do not exceed this limit.
+
+Capitalize every word in the Title, except for conjunctions, prepositions, and articles (e.g., “di”, “e”, “a”, “con”, “su”).
+
+Provide an estimation of how much the new Title and Description could increase the CTR.
+
+Format your answer exactly as follows and REPLY IN THE SAME LANGUAGE as the user:SEO Title: [new title, max 60 characters]
+Meta Description: [new description, max 155 characters]
 CTR Estimation (Original): [estimated CTR in % for the original title/description]
 CTR Estimation (Optimized): [estimated CTR in % for the optimized title/description]
 CTR Increase: [estimated percentage increase in CTR]
 
-YOU MUST REPLY in the language of the user."""
+"""
 
         client = OpenAI(api_key=current_api_key)
 
         response = client.responses.create(
             model="gpt-4.1",
-            instructions="You are SEO Expert with more over 11 years of experience",
+            instructions="You are SEO Expert with more over 11 years of experience, please provide the best solution for the user to increase CTR in SERP.",
             input=prompt
         )
 
         result = response.output_text
-        token = response.max_output_tokens
-        print(token)
+        token_input = response.usage.input_tokens
+        token_input_cost = int(token_input) * (3 / 1000000)
+        token_output = response.usage.output_tokens
+        token_output_cost = int(token_output) * (12 / 1000000)
+        token_cost = token_input_cost + token_output_cost
+        print(f"{token_cost} $")
+        print(result)
 
         # Devolver respuesta
         return jsonify({
@@ -371,7 +383,8 @@ YOU MUST REPLY in the language of the user."""
                 'analysis': result,
                 'original': {
                     'title': title,
-                    'description': meta_description
+                    'description': meta_description,
+                    'token_cost': token_cost
                 }
             }
         })
