@@ -65,9 +65,9 @@ El frontend estará disponible en http://localhost:3000 y el backend en http://l
 1. Crea un archivo `.env` en la carpeta `src/` con las siguientes variables:
 ```
 OPENAI_API_KEY=
-REACT_APP_ENCRYPTION_KEY=ForzaNapoli1926
-ENCRYPTION_KEY=ForzaNapoli1926
-SECRET_KEY=ForzaNapoli1926
+REACT_APP_ENCRYPTION_KEY=xxx
+ENCRYPTION_KEY=xxx
+SECRET_KEY=xxx
 ```
 
 Nota: No es necesario rellenar `OPENAI_API_KEY` ya que la aplicación está diseñada para que el usuario proporcione su propia clave.
