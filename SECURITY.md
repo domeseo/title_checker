@@ -109,16 +109,25 @@ gunicorn --config src/backend/gunicorn_config.py --bind 0.0.0.0:5002 api.routes:
 **Detalles técnicos**:
 Las vulnerabilidades ReDoS se producen principalmente debido al subpatrón `\s*(?:([+-]?)\s*(\d+))?` con adyacencia superpuesta cuantificada. Un atacante puede explotar esto con entrada como `2n` seguido de un gran número de espacios y luego un carácter no válido.
 
+**Situación particular con react-scripts**:
+React-scripts 5.0.1 requiere `nth-check@^1.0.2` a través de una dependencia transitiva en css-select@2.1.0. Esta dependencia transitiva no puede ser actualizada directamente sin romper la compatibilidad.
+
 **Mitigación**:
-1. Se actualizó la dependencia `nth-check` a la versión 2.1.1 o superior mediante:
-   - Resoluciones en package.json
-   - Parche directo de las instancias vulnerables en node_modules
-2. Se ejecutó un script personalizado (`fix-security.js`) para asegurar que todas las instancias anidadas del paquete también estén parcheadas
+1. Se implementó un parche directo para `nth-check@1.0.2` usando patch-package:
+   - Se añadió limitación en la cantidad de espacios en blanco (max. 100)
+   - Se añadió validación para la longitud total de la fórmula (max. 2000 caracteres)
+   - Se automatizó la aplicación del parche con un script postinstall
+2. Se configuró resolutions en package.json para forzar versiones seguras donde fuera posible
+3. Se ejecutó un script personalizado (`fix-security.js`) para asegurar que todas las instancias del paquete también estén parcheadas
 
 **Verificación**:
-Para verificar que la aplicación está protegida contra este ataque, ejecuta el siguiente script para identificar y actualizar cualquier instancia de nth-check vulnerable:
+Para verificar que la aplicación está protegida contra este ataque, ejecuta:
 ```bash
-node fix-security.js
+# Instalar dependencias aplicando el parche automáticamente
+npm install
+
+# O aplicar el parche manualmente si ya has instalado dependencias
+npx patch-package
 ```
 
 **Referencias**:

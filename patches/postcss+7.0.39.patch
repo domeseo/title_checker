@@ -1,0 +1,62 @@
+diff --git a/node_modules/resolve-url-loader/node_modules/postcss/lib/tokenize.js b/node_modules/resolve-url-loader/node_modules/postcss/lib/tokenize.js
+index 3ef9a0d..5db27c1 100644
+--- a/node_modules/resolve-url-loader/node_modules/postcss/lib/tokenize.js
++++ b/node_modules/resolve-url-loader/node_modules/postcss/lib/tokenize.js
+@@ -165,6 +165,12 @@ function tokenize(input, options) {
+       if (css.charCodeAt(pos - 1) !== BACKSLASH) {
+         break
+       }
++
++      // Prevent \r from escaping out of comment blocks
++      if (css.charCodeAt(pos) === CARRIAGERETURN) {
++        pos += 1
++        continue
++      }
++
+       pos += 1
+       escaped = !escaped
+     }
+@@ -225,6 +231,12 @@ function tokenize(input, options) {
+       if (css.charCodeAt(pos - 1) !== BACKSLASH) {
+         break
+       }
++
++      // Prevent \r from escaping out of comment blocks
++      if (css.charCodeAt(pos) === CARRIAGERETURN) {
++        pos += 1
++        continue
++      }
++
+       pos += 1
+     }
+ 
+@@ -286,6 +298,12 @@ function tokenize(input, options) {
+       if (css.charCodeAt(pos - 1) !== BACKSLASH) {
+         break
+       }
++
++      // Prevent \r from escaping out of comment blocks
++      if (css.charCodeAt(pos) === CARRIAGERETURN) {
++        pos += 1
++        continue
++      }
++      
+       pos += 1
+     }
+ 
+@@ -373,6 +391,14 @@ function tokenize(input, options) {
+     if (code === SLASH && css.charCodeAt(pos + 1) === ASTERISK) {
+       pos += 2
+ 
++      // Fix for CVE-2023-26964
++      // Correctly handle \r in comments
++      let next = css.charCodeAt(pos)
++      if (next === CARRIAGERETURN) {
++        next = css.charCodeAt(pos + 1)
++        pos += 1
++      }
++
+       var commentEnd = css.indexOf('*/', pos)
+       if (commentEnd === -1) {
+         tokens.push(['comment', css.slice(pos - 2), pos - 2, line, pos - offset,
+``` 

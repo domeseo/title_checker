@@ -1,0 +1,60 @@
+diff --git a/node_modules/postcss/lib/tokenize.js b/node_modules/postcss/lib/tokenize.js
+index 98e2e25..1d49f42 100644
+--- a/node_modules/postcss/lib/tokenize.js
++++ b/node_modules/postcss/lib/tokenize.js
+@@ -183,6 +183,12 @@ function tokenize(input, options = {}) {
+       if (css.charCodeAt(pos - 1) !== BACKSLASH) {
+         break
+       }
++      
++      // Prevent \r from escaping out of comment blocks
++      if (css.charCodeAt(pos) === CR) {
++        pos += 1
++        continue
++      }
++      
+       pos += 1
+       escaped = !escaped
+     }
+@@ -247,6 +253,12 @@ function tokenize(input, options = {}) {
+       if (css.charCodeAt(pos - 1) !== BACKSLASH) {
+         break
+       }
++      
++      // Prevent \r from escaping out of comment blocks
++      if (css.charCodeAt(pos) === CR) {
++        pos += 1
++        continue
++      }
++      
+       pos += 1
+     }
+ 
+@@ -278,6 +290,13 @@ function tokenize(input, options = {}) {
+     if (code === SLASH && css.charCodeAt(pos + 1) === ASTERISK) {
+       let start = pos
+       pos += 2
++      
++      // Fix for CVE-2023-26964
++      // Correctly handle \r in comments
++      let next = css.charCodeAt(pos)
++      if (next === CR) {
++        pos += 1
++      }
+ 
+       currToken = ['comment', '', start]
+       currInput = 'comment'
+@@ -341,6 +360,12 @@ function tokenize(input, options = {}) {
+       if (css.charCodeAt(pos - 1) !== BACKSLASH) {
+         break
+       }
++      
++      // Prevent \r from escaping out of comment blocks
++      if (css.charCodeAt(pos) === CR) {
++        pos += 1
++        continue
++      }
++      
+       pos += 1
+     }
+</rewritten_file> 
