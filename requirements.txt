@@ -6,8 +6,11 @@ beautifulsoup4==4.12.2
 redis==5.0.1
 pycryptodome==3.20.0
 python-dotenv==1.0.1
+dependabot/pip/gunicorn-23.0.0
 requests==2.31.0
 gunicorn==23.0.0
-# Dependencias adicionales para seguridad
+requests==2.32.2
+gunicorn==22.0.0
+ main
 validators==0.22.0
 ipaddress==1.0.23 
