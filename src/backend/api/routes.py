@@ -472,7 +472,7 @@ Your task:
    - You MUST count the characters (including spaces) and ensure the Title is max 60 and the Meta Description max 155. Never exceed. If needed, rewrite or shorten.
 4. Capitalize every word in the Title, except for articles, prepositions, and conjunctions (e.g., "di", "e", "a", "con", "su").
 5. The Meta Description must include the focus keyword **if possible** in a natural way and should help to increase the CTR by being clear, appealing, and action-oriented.
-6. Provide an estimation of how much the new Title and Description could increase the CTR.
+6. Provide an estimation of how much the new Title and Description could increase the CTR. DON'T USE DATA (YEAR) IN TITLE OR META DESCRIPTION.
 
 Format your answer exactly as follows and REPLY IN THE SAME LANGUAGE as the user:
 
