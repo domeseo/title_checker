@@ -9,20 +9,36 @@ const secretPass = process.env.REACT_APP_ENCRYPTION_KEY || "";
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
 
 function encryptAPIKey(apiKey) {
-    // Implement a more secure encryption using AES
     if (!secretPass) {
         console.error("Encryption key is missing");
         return null;
     }
 
     try {
-        // Use AES encryption instead of simple Base64
-        return CryptoJS.AES.encrypt(apiKey, secretPass).toString();
+        // Deriva una chiave usando SHA-256 come nel backend
+        const key = CryptoJS.SHA256(secretPass);
+
+        // Crea un IV random di 16 bytes
+        const iv = CryptoJS.lib.WordArray.random(16);
+
+        // Cifra il messaggio
+        const encrypted = CryptoJS.AES.encrypt(apiKey, key, {
+            iv: iv,
+            mode: CryptoJS.mode.CBC,
+            padding: CryptoJS.pad.Pkcs7
+        });
+
+        // Concatena IV + ciphertext
+        const encryptedData = iv.concat(encrypted.ciphertext);
+
+        // Codifica tutto in Base64
+        return CryptoJS.enc.Base64.stringify(encryptedData);
     } catch (error) {
         console.error("Encryption failed:", error);
         return null;
     }
 }
+
 
 const SerpChecker = ({ onUpdate }) => {
     const [title, setTitle] = useState("");
@@ -104,6 +120,7 @@ const SerpChecker = ({ onUpdate }) => {
             }
         } catch (err) {
             console.error("Error:", err);
+            
             setError("Error configuring the API key: " + err.message);
         }
     };

@@ -69,44 +69,18 @@ def decrypt_api_key(encrypted_key, passphrase=None):
             if not passphrase:
                 raise ValueError("Encryption key is missing")
 
-        # Implementación de descifrado AES para la nueva versión
-        # Importación necesaria para Crypto
-        from Crypto.Cipher import AES
-        from Crypto.Util.Padding import unpad
         from base64 import b64decode
-
-        # Descifrar usando el mismo algoritmo que en el frontend
-        try:
-            # Decodificar de base64
-            encrypted_bytes = b64decode(encrypted_key)
-            # Extraer vector de inicialización (primeros 16 bytes)
-            iv = encrypted_bytes[:16]
-            # Extraer datos cifrados
-            ciphertext = encrypted_bytes[16:]
-            # Crear clave a partir de contraseña
-            key = hashlib.sha256(passphrase.encode()).digest()
-            # Crear objeto AES
-            cipher = AES.new(key, AES.MODE_CBC, iv)
-            # Descifrar y eliminar el padding
-            decrypted = unpad(cipher.decrypt(ciphertext), AES.block_size)
-            return decrypted.decode('utf-8')
-        except Exception as e:
-            print(f"Error en nuevo método de descifrado: {e}")
-            # Intentar con el método antiguo si el nuevo falla
-            if encrypted_key.startswith('b\'') or encrypted_key.startswith('b"'):
-                key = hashlib.sha256(passphrase.encode()).digest()
-                encrypted_data = base64.b64decode(encrypted_key)
-                iv = encrypted_data[:16]
-                cipher = AES.new(key, AES.MODE_CFB, iv)
-                decrypted = cipher.decrypt(encrypted_data[16:])
-                return decrypted.decode('utf-8')
-            else:
-                # Método de respaldo (simple Base64)
-                return base64.b64decode(encrypted_key).decode('utf-8')
-
+        encrypted_bytes = b64decode(encrypted_key)
+        iv = encrypted_bytes[:16]
+        ciphertext = encrypted_bytes[16:]
+        key = hashlib.sha256(passphrase.encode()).digest()
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        decrypted = unpad(cipher.decrypt(ciphertext), AES.block_size)
+        return decrypted.decode('utf-8')
     except Exception as e:
         print(f"Error al desencriptar: {e}")
         return None
+
 
 
 # api key encrypting
@@ -509,6 +483,7 @@ CTR Increase: [estimated % increase]
 """
 
         client = OpenAI(api_key=current_api_key)
+        
 
         response = client.responses.create(
             model="gpt-4.1",
