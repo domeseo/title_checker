@@ -26,6 +26,10 @@ app.secret_key = os.getenv("SECRET_KEY")
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 horas
+app.config['SESSION_COOKIE_SECURE'] = True         # HTTPS
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'     #  Cookie set
+
+
 
 # Configuración de CORS más segura
 allowed_origins = os.getenv(
