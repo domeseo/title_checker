@@ -8,11 +8,7 @@ const fetchData = async () => {
 
         if (response.status === 429) {
             const data = await response.json();
-            Swal.fire({
-                icon: "error",
-                title: "You have reached max optimization for today",
-                text: data.message || 'Came back tomorrow'
-            });
+
             return;
         }
 
