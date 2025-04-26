@@ -1,43 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import CryptoJS from "crypto-js";
+import Swal from 'sweetalert2';
+
+
+const fetchData = async () => {
+    try {
+        const response = await fetch('/extract-meta');
+
+        if (response.status === 429) {
+            const data = await response.json();
+            Swal.fire({
+                icon: "error",
+                title: "You have reached max optimization for today",
+                text: data.message || 'Came back tomorrow'
+            });
+            return;
+        }
+
+        const data = await response.json();
+        console.log(data);
+
+    } catch (error) {
+        console.error('Error fetchi data:', error)
+    }
+};
 
 // Get the key from environment variables, never hardcoded
 const secretPass = process.env.REACT_APP_ENCRYPTION_KEY || "";
 
 // Get the API base URL from environment variables
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
-
-function encryptAPIKey(apiKey) {
-    if (!secretPass) {
-        console.error("Encryption key is missing");
-        return null;
-    }
-
-    try {
-        // Deriva una chiave usando SHA-256 come nel backend
-        const key = CryptoJS.SHA256(secretPass);
-
-        // Crea un IV random di 16 bytes
-        const iv = CryptoJS.lib.WordArray.random(16);
-
-        // Cifra il messaggio
-        const encrypted = CryptoJS.AES.encrypt(apiKey, key, {
-            iv: iv,
-            mode: CryptoJS.mode.CBC,
-            padding: CryptoJS.pad.Pkcs7
-        });
-
-        // Concatena IV + ciphertext
-        const encryptedData = iv.concat(encrypted.ciphertext);
-
-        // Codifica tutto in Base64
-        return CryptoJS.enc.Base64.stringify(encryptedData);
-    } catch (error) {
-        console.error("Encryption failed:", error);
-        return null;
-    }
-}
 
 
 const SerpChecker = ({ onUpdate }) => {
@@ -50,13 +42,12 @@ const SerpChecker = ({ onUpdate }) => {
     const [isMetaExtracted, setIsMetaExtracted] = useState(false);
     const [metadata, setMetadata] = useState(null);
     const [userId, setUserId] = useState("");
-    const [openai, setOpenai] = useState("");
     const [keyword, setKeyword] = useState("");
     const [brand, setBrand] = useState("");
     const [previewData, setPreviewData] = useState({
         title: "",
         description: "",
-        url: "https://example.com"
+        url: "https://google.com"
     });
 
     const handleKeywordChange = (e) => {
@@ -89,41 +80,6 @@ const SerpChecker = ({ onUpdate }) => {
     useEffect(() => {
         updatePreview();
     }, []);
-
-    const sendApiKey = async () => {
-        try {
-            if (!openai) {
-                setError("Please, introduce your OpenAI API key");
-                return;
-            }
-
-            // Usar la nueva función de encriptación
-            const encryptedKey = encryptAPIKey(openai);
-
-            const response = await fetch(`${API_URL}/set-key`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    encryptedKey: encryptedKey
-                })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                alert("API key configured correctly");
-            } else {
-                throw new Error(data.message || "Error configuring the API key");
-            }
-        } catch (err) {
-            console.error("Error:", err);
-            
-            setError("Error configuring the API key: " + err.message);
-        }
-    };
 
     // Generar o recuperar ID de usuario si no existe
     useEffect(() => {
@@ -253,55 +209,30 @@ const SerpChecker = ({ onUpdate }) => {
     return (
         <>
             {error && <Alert variant="danger">{error}</Alert>}
+    
+            
+            <title>SEO Title Optimizer</title>
+            <meta name="title" content="SEO Title Generator – Create Compelling Titles With AI " />
+<meta name="description" content="Boost clicks with our SEO Title Generator. Get optimized titles and meta descriptions powered by AI for higher rankings and more traffic." />
+            <p>Analyze your MetaData and get suggestion to increase CTR. </p>
 
             {/* A single form for everything */}
             <Form onSubmit={handleSubmit}>
-
                 <div className="container">
-                    <div className="row">
-                        <div className="col-sm openkeybox">
-                            <Form >
-                                <Form.Group className="form-group mb-3">
-                                    <Form.Label>OpenAI Key</Form.Label>
-                                    <Form.Control type="password" className="form-control" required value={openai} onChange={(e) => setOpenai(e.target.value)} />
-                                </Form.Group>
-                            </Form>
-                            {/* Button to send OpenAI Key */}
-                            <Button
-                                variant="danger"
-                                type="button"
-                                disabled={isLoading || !openai}
-                                onClick={sendApiKey}
-                                className="mb-4"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Spinner
-                                            as="span"
-                                            animation="border"
-                                            size="sm"
-                                            role="status"
-                                            aria-hidden="true"
-                                            className="me-2"
-                                        />
-                                        Working...
-                                    </>
-                                ) : (
-                                    "Set your Key"
-                                )}
-                            </Button>
 
-                        </div>
-                        <div className="col-sm urlmeta">
+                        <div className="col-sm urlmeta mb-4">
                             {/* URL field */}
                             <Form.Group className="mb-3">
                                 <Form.Label>URL</Form.Label>
+                                <p classname="url-meta">Insert your URL to extract automatically your Metadata, alternatively you can insert manually your data. (Example: if you are writing new post).</p>
+
                                 <Form.Control
                                     type="text"
                                     placeholder="https://example.com"
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
                                 />
+
                             </Form.Group>
                             {/* Button to get metadata */}
                             <Button
@@ -309,7 +240,7 @@ const SerpChecker = ({ onUpdate }) => {
                                 type="button"
                                 disabled={isLoading}
                                 onClick={() => getMetas(url)}
-                                className="mb-4"
+                                className="mb-4 w-100"
                             >
                                 {isLoading ? (
                                     <>
@@ -319,21 +250,20 @@ const SerpChecker = ({ onUpdate }) => {
                                             size="sm"
                                             role="status"
                                             aria-hidden="true"
-                                            className="me-2"
+                                            className="me-2 btn-warning"
                                         />
-                                        Working...
+                                        Working...Please Wait
                                     </>
                                 ) : (
-                                    "Get Metadata"
+                                    "🔍 Extract Metadata"
                                 )}
                             </Button>
 
                         </div>
                     </div>
-                </div>
                 <div className="container">
                     <div className="row">
-                        <div className="col-sm keyword">{/* Keyword */}
+                        <div className="col-sm keyword mb-4">{/* Keyword */}
                             <Form.Group className="mb-4">
                                 <Form.Label>Focus Keyword</Form.Label>
                                 <Form.Control
@@ -343,7 +273,7 @@ const SerpChecker = ({ onUpdate }) => {
                                     onChange={handleKeywordChange}
                                 />
                             </Form.Group></div>
-                        <div className="col-sm brand"><Form.Group className="mb-4">
+                        <div className="col-sm brand mb-4"><Form.Group className="mb-4">
                             <Form.Label>Brand</Form.Label>
                             <Form.Control
                                 type="text"

@@ -1,3 +1,4 @@
+
 .App {
   text-align: center;
 }
@@ -88,24 +89,36 @@
   color: #333;
 }
 
-.openkeybox {
-  background: aliceblue;
-  margin: 2px;
-  border-radius: 10px;
-  font-weight: bold;
-}
-
 .form-label {
   margin: 2px;
   padding: 10px;
 }
 
-.urlmeta,
 .keyword,
 .brand {
-  background-color: aliceblue;
+  background-color: #e0f7fa ;
   margin: 4px;
   border-radius: 10px;
   margin-bottom: 2px;
   font-weight: bold;
+}
+
+.urlmeta {
+  background-color: #e0f7fa ;
+  margin: 2rem;
+  border-radius: 10px;
+  margin-bottom: 2px;
+  font-weight: bold;
+  padding: 2rem;
+}
+
+p {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 12px;
+  font-weight: lighter;
+}
+
+.navbar-light .navbar-nav .nav-link {
+  color: #000;
 }

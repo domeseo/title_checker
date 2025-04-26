@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for, send_from_directory
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address 
 from flask_cors import CORS
 from openai import OpenAI
 import requests
@@ -18,8 +20,14 @@ import ipaddress
 import html
 from datetime import datetime, timedelta
 from collections import defaultdict
+from base64 import b64decode
 
 app = Flask(__name__)
+limiter = Limiter(
+    get_remote_address, 
+    app=app,
+    default_limits=['3 per hour']
+)
 # Configuración de secreto para las sesiones
 app.secret_key = os.getenv("SECRET_KEY")
 # Configurar la permanencia de las sesiones
@@ -46,7 +54,14 @@ blocked_ips = {}
 MAX_ATTEMPTS = 5
 BLOCK_TIME_MINUTES = 15
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 # Añadir encabezados de seguridad a todas las respuestas
+
+@app.route('/slow')
+@limiter.limit('3 per day')
+def slow():
+    return '24'
 
 
 @app.after_request
@@ -73,7 +88,6 @@ def decrypt_api_key(encrypted_key, passphrase=None):
             if not passphrase:
                 raise ValueError("Encryption key is missing")
 
-        from base64 import b64decode
         encrypted_bytes = b64decode(encrypted_key)
         iv = encrypted_bytes[:16]
         ciphertext = encrypted_bytes[16:]
@@ -92,17 +106,6 @@ encryption_key = os.getenv("ENCRYPTION_KEY")
 encrypted_key = os.getenv("ENCRYPTED_API_KEY")
 
 # Intentamos inicializar con la clave encriptada si está disponible
-default_api_key = None
-if encrypted_key:
-    try:
-        default_api_key = decrypt_api_key(encrypted_key, encryption_key)
-    except Exception as e:
-        print(f"Error al desencriptar la API key: {e}")
-
-
-def get_current_api_key():
-    return session.get("openai_key") or default_api_key
-
 
 @app.route("/set-key", methods=["POST"])
 def set_key():
@@ -177,6 +180,7 @@ def index():
 
 
 @app.route('/extract-meta', methods=['POST'])
+@limiter.limit("5 per day")
 def extract_meta():
     data = request.json
     url = data.get("url")
@@ -221,12 +225,6 @@ def extract_meta():
         }), 429  # 429 = Too Many Requests
 
     # Verificar que tenemos una API key
-    current_api_key = get_current_api_key()
-    if not current_api_key:
-        return jsonify({
-            "error": "API key not available",
-            "message": "Please provide your OpenAI API key"
-        }), 400
 
     try:
         # Agregar timeout para evitar esperas prolongadas
@@ -411,6 +409,7 @@ def extract_meta():
 
 
 @app.route('/analyze', methods=['POST'])
+@limiter.limit("5 per day")
 def analyze_AI():
     try:
         # Obtener datos del request
@@ -447,14 +446,6 @@ def analyze_AI():
                 "message": "You have reached the daily analysis limit (3). Please try again tomorrow."
             }), 429
 
-        # Usar la clave de la sesión si está disponible, o la clave del entorno como respaldo
-        current_api_key = get_current_api_key()
-
-        if not current_api_key:
-            return jsonify({
-                "error": "API key not available",
-                "message": "Please provide your OpenAI API key"
-            }), 400
 
         # Crear el prompt para OpenAI
         prompt = f"""
@@ -486,7 +477,7 @@ CTR Increase: [estimated % increase]
 
 """
 
-        client = OpenAI(api_key=current_api_key)
+        client = OpenAI(api_key=OPENAI_API_KEY)
         
 
         response = client.responses.create(
@@ -526,6 +517,13 @@ CTR Increase: [estimated % increase]
             'status': 'error',
             'message': str(e)
         }), 500
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    app.logger.warning(f"You are Reach 3 optmization for today, come back tomorrow {e.description}")
+
+    return jsonify(error="You are reached 3 optimization today", message="You have reached 5 optimization per day."), 429
+
 
 
 @app.route('/api/health', methods=['GET'])
