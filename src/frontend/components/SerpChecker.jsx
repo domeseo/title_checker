@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import Swal from 'sweetalert2';
 
 
 const fetchData = async () => {
